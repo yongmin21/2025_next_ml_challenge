@@ -1,0 +1,44 @@
+schema: '2.0'
+stages:
+  prepare:
+    cmd: python source/prepare.py
+    deps:
+    - path: data/train.parquet
+      hash: md5
+      md5: 2c48e5fc993746c51123069b38f97a01
+      size: 8792378921
+    - path: source/prepare.py
+      hash: md5
+      md5: 9546ff41d217829f4a9dbd68ce58abeb
+      size: 684
+    outs:
+    - path: data/prepared/train_under_sampled.parquet
+      hash: md5
+      md5: 79d35f57251b3ecaaca7f65a1ed1e2fc
+      size: 145000106
+  train:
+    cmd: python source/train.py
+    deps:
+    - path: data/prepared/train_under_sampled.parquet
+      hash: md5
+      md5: 79d35f57251b3ecaaca7f65a1ed1e2fc
+      size: 145000106
+    - path: source/train.py
+      hash: md5
+      md5: 84d8fde16bb165a87fe6bc850be9803e
+      size: 1945
+    params:
+      params.yaml:
+        experiment:
+          name: 2025-next-ml-challenge
+        model:
+          name: baseline-catboost
+          iterations: 2000
+          learning_rate: 0.02
+          loss_function: Logloss
+          verbose: false
+    outs:
+    - path: data/models/models.onnx
+      hash: md5
+      md5: 8d81b2cf6db5a969cbe3afeb5acd722f
+      size: 11160753

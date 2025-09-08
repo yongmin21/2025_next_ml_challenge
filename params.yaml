@@ -1,0 +1,9 @@
+experiment:
+  name: 2025-next-ml-challenge
+
+model:
+  name: baseline-catboost
+  iterations: 2000
+  learning_rate: 0.02
+  loss_function: Logloss
+  verbose: False
