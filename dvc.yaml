@@ -1,0 +1,19 @@
+stages:
+  prepare:
+    cmd: python source/prepare.py
+    deps:
+      - source/prepare.py
+      - data/train.parquet
+    outs:
+      - data/prepared/train_under_sampled.parquet
+
+  train:
+    cmd: python source/train.py
+    deps:
+      - source/train.py
+      - data/prepared/train_under_sampled.parquet
+    params:
+      - experiment
+      - model
+    outs:
+      - data/models/models.onnx

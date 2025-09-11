@@ -1,4 +1,9 @@
 /.venv/
 /data/
+/notebooks/
+/mlruns/
+/.tmp/
+/catboost_info/
+/mlartifacts/
 .env
 .envrc
