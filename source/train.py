@@ -1,10 +1,11 @@
 import duckdb
-import catboost
+import xgboost
 import pathlib
 import mlflow
 import dvc.api
 import sklearn
 import os
+import numpy as np
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI")
 
@@ -15,8 +16,13 @@ mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 mlflow.set_experiment(experiment_name=params["experiment"]["name"])
 
 data_frame = duckdb.read_parquet(
-    str(data_path / "prepared/train_under_sampled.parquet")
+    str(data_path / "prepared/train.parquet")
 ).to_df()
+
+
+object_columns = ["gender", "age_group", "inventory_id", "day_of_week", "hour", "seq_first", "seq_last", "seq_length"]
+
+data_frame[object_columns] = data_frame[object_columns].astype(np.float16)
 
 train, valid = sklearn.model_selection.train_test_split(
     data_frame,
@@ -25,54 +31,57 @@ train, valid = sklearn.model_selection.train_test_split(
     stratify=data_frame["clicked"],
 )
 
-train_pool = catboost.Pool(
+train_pool = xgboost.DMatrix(
     train.drop(columns=["clicked"]),
     train["clicked"],
 )
 
-valid_pool = catboost.Pool(
+valid_pool = xgboost.DMatrix(
     valid.drop(columns=["clicked"]),
     valid["clicked"],
 )
 
-model = catboost.CatBoostClassifier(
-    iterations=2000,
-    learning_rate=0.02,
-    loss_function="Logloss",
-    verbose=False,
-)
+pos_ratio = train["clicked"].mean()
+scale_pos_weight = (1 - pos_ratio) / pos_ratio
+
+parameters = {
+    'objective': 'binary:logistic',
+    'tree_method': 'gpu_hist',
+    'max_depth': 8,
+    'learning_rate': 0.1,
+    'subsample': 0.8,
+    'colsample_bytree': 0.8,
+    'scale_pos_weight': scale_pos_weight,
+    'verbosity': 0,
+    'seed': 42
+}
 
 with mlflow.start_run() as run:
-    model.fit(train_pool, eval_set=valid_pool)
+    model = xgboost.train(
+        params=parameters, dtrain=train_pool,
+        early_stopping_rounds=100, evals=[(train_pool,'train'),(valid_pool,'eval')]
+    )
 
-    mlflow.catboost.log_model(
+    mlflow.xgboost.log_model(
         model,
         name=params["model"]["name"],
         input_example=train.head(),
     )
 
-    mlflow.log_params(params["model"])
+    mlflow.log_params(parameters)
 
     metrics = {
         "average_precision_score": sklearn.metrics.average_precision_score(
-            valid["clicked"], model.predict_proba(valid_pool)[:, 1]
+            valid["clicked"], model.predict(valid_pool)
         ),
         "logloss": sklearn.metrics.log_loss(
-            valid["clicked"], model.predict_proba(valid_pool)[:, 1]
+            valid["clicked"], model.predict(valid_pool)
         ),
     }
 
     mlflow.log_metrics(metrics)
     print(metrics)
 
-    model_save_path = data_path / "models/models.onnx"
+    model_save_path = data_path / "models/models.json"
     model_save_path.parent.mkdir(parents=True, exist_ok=True)
-    model.save_model(
-        model_save_path,
-        format="onnx",
-        export_parameters={
-            "onnx_domain": "ai.catboost",
-            "onnx_doc_string": "test model for BinaryClassification",
-            "onnx_graph_name": "CatBoostModel_for_BinaryClassification",
-        },
-    )
+    model.save_model(model_save_path)

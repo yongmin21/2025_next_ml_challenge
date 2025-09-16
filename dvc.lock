@@ -9,24 +9,24 @@ stages:
       size: 8792378921
     - path: source/prepare.py
       hash: md5
-      md5: 9546ff41d217829f4a9dbd68ce58abeb
-      size: 684
+      md5: 4dca4c4f2433aa8ce79425191c99440c
+      size: 563
     outs:
-    - path: data/prepared/train_under_sampled.parquet
+    - path: data/prepared/train.parquet
       hash: md5
-      md5: 79d35f57251b3ecaaca7f65a1ed1e2fc
-      size: 145000106
+      md5: d41d8cd98f00b204e9800998ecf8427e
+      size: 0
   train:
     cmd: python source/train.py
     deps:
-    - path: data/prepared/train_under_sampled.parquet
+    - path: data/prepared/train.parquet
       hash: md5
-      md5: 79d35f57251b3ecaaca7f65a1ed1e2fc
-      size: 145000106
+      md5: 8e5cc7bee8cf32d50d78776b06de293c
+      size: 1864655013
     - path: source/train.py
       hash: md5
-      md5: 84d8fde16bb165a87fe6bc850be9803e
-      size: 1945
+      md5: 69ab943c356d4f9fb5bc61997e3e6f38
+      size: 2176
     params:
       params.yaml:
         experiment:
@@ -38,7 +38,7 @@ stages:
           loss_function: Logloss
           verbose: false
     outs:
-    - path: data/models/models.onnx
+    - path: data/models/models.json
       hash: md5
-      md5: 8d81b2cf6db5a969cbe3afeb5acd722f
-      size: 11160753
+      md5: 38a7dc86856a029ddcc1dd7e0f08f978
+      size: 296692
